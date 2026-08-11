@@ -1,0 +1,66 @@
+# Lint settings for the agent, the proxy, and the scripts.
+#
+# Pinned explicitly rather than left to ruff's defaults: the default rule set
+# changes between ruff releases, so "the lint passes" would otherwise mean
+# something different every upgrade.
+
+target-version = "py311"
+line-length = 100
+extend-exclude = [".venv", "build", "dist"]
+
+[lint]
+select = [
+    "F",     # pyflakes — unused imports and names, bad format strings
+    "E4",    # imports
+    "E7",    # statement-level mistakes
+    "E9",    # syntax and IO errors
+    "E402",  # module import not at top of file (deliberate in scripts/, marked noqa)
+    "W",     # trailing whitespace, missing final newline
+    "I",     # import sorting
+    "UP",    # pyupgrade — keep up with the target Python
+    "B",     # bugbear — mutable defaults, loop-variable capture
+    "C4",    # comprehension rewrites
+    "SIM",   # obvious simplifications
+    "DTZ",   # timezone-naive datetimes
+    "ISC",   # implicit string concatenation
+    "PLE",   # pylint errors
+    "PLW",   # pylint warnings
+    "FURB",  # modernisations
+    "S",     # bandit — this app holds OAuth tokens and can send mail
+    "RUF",
+]
+ignore = [
+    # The agent must survive anything a Google API, the model, or a tool handler
+    # throws: a broken tool call is reported back to the model and the turn
+    # continues. Every site that does this narrows or re-raises where it can.
+    "BLE001",
+    # asserts carry the self-test; it is not run under -O.
+    "S101",
+]
+
+[lint.per-file-ignores]
+# The self-test builds fake tokens on purpose (S105/S106), drives its own
+# loopback server over literal http:// URLs (S310), and works in local wall
+# clock throughout because that is what reminders are made of (DTZ).
+"scripts/selftest.py" = ["S105", "S106", "S310", "DTZ"]
+# Reminders are wall-clock things: "every weekday at 6pm" has to stay 6pm
+# across a DST change, so the arithmetic is deliberately done on naive local
+# times and converted to an instant at the edges. DTZ would flag every step.
+"agent/reminders.py" = ["DTZ005"]
+"agent/tools/reminders.py" = ["DTZ005"]
+# The credential stores shell out to the platform's own tools — `security` on
+# macOS, `secret-tool` on Linux — by name (S607), because each is looked up
+# with shutil.which() in available() before its backend is ever selected, and
+# hard-coding /usr/bin would break on distributions that put them elsewhere.
+# A backend that fails to initialise is skipped rather than logged (S112):
+# there is nothing useful to say about "this desktop has no keyring", and the
+# chooser reports the outcome itself.
+"agent/providers/keystore.py" = ["S607", "S112"]
+# The auth suite is made of deliberately fake credentials: passwords it expects
+# to be rejected (S105/S106), and table names interpolated from a literal list
+# so one assertion can be made against every user-owned table at once (S608).
+# Flagging those would mean the suite could not describe what it is testing.
+"tests/*" = ["S105", "S106", "S608"]
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "parents"

@@ -1,0 +1,55 @@
+# Secrets — never commit these.
+# AI provider keys are not in any of these: they live in the OS credential
+# store (Windows Credential Manager / Keychain / Secret Service). The only
+# exception is the opt-in unprotected fallback, which writes
+# credentials/provider-keys.json — covered by credentials/ below.
+.env
+.env.*
+!.env.example
+credentials/
+client_secret.json
+client_secret*.json
+
+# Provider choices. No keys in it, but it is per-user state, not source.
+providers.json
+
+# Build output
+build/
+dist/
+*.spec
+
+# Files the agent downloads or writes
+workspace/
+
+# Local run output
+agent.log
+activity.log
+activity.log.*
+crash.log
+
+# Chromium's profile for the browser tools — cookies and live logins
+browser-profile/
+
+# The reminders database — the user's own data, not the app's
+reminders.db
+reminders.db-wal
+reminders.db-shm
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Lint cache
+.ruff_cache/
+
+# Server secrets. The API server reads its configuration from the environment
+# in production and from .env in a checkout; .env is already ignored above, and
+# these are the extra shapes a Supabase/Postgres setup tends to leave lying
+# around.
+supabase/.temp/
+supabase/.branches/
+*.dump
+*.sql.gz

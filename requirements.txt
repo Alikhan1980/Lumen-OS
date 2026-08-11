@@ -1,0 +1,22 @@
+# AI providers. Anthropic ships an SDK worth using — prompt caching and
+# extended thinking are fiddly to hand-roll. OpenAI and Gemini are plain REST
+# over httpx in agent/providers/, which keeps the bundle small and the error
+# handling under our own control. See agent/providers/base.py.
+anthropic>=0.70.0
+httpx>=0.27.0
+google-api-python-client>=2.140.0
+google-auth>=2.34.0
+google-auth-oauthlib>=1.2.0
+rich>=13.7.0
+python-dotenv>=1.0.1
+# Web search and page reading. ddgs is the keyless default search backend;
+# Brave, Tavily and Google Programmable Search are plain REST over httpx.
+ddgs>=9.0.0
+beautifulsoup4>=4.13.0
+# Browser automation. The Chromium it drives is a separate download:
+#     python -m playwright install chromium
+playwright>=1.55.0
+# Reminders are wall-clock things across timezones. tzdata ships the IANA
+# database Windows does not have; tzlocal names the machine's own zone.
+tzdata>=2024.1
+tzlocal>=5.2

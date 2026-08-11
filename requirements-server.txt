@@ -1,0 +1,32 @@
+# Dependencies for the API server (server/). Separate from requirements.txt so
+# the desktop build does not pull a web framework and a Postgres driver into
+# the .exe -- the packaged app is a client of this service, not a copy of it.
+#
+#     pip install -r requirements-server.txt
+
+# The application.
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic[email]>=2.9.0
+
+# Postgres. asyncpg rather than psycopg because the RLS-scoped connection in
+# server/db.py wants a real async driver with predictable transaction control.
+asyncpg>=0.30.0
+
+# Token verification. PyJWT with the crypto extra, for the ES256/RS256 keys
+# Supabase publishes at its JWKS endpoint.
+pyjwt[crypto]>=2.9.0
+
+# AES-256-GCM for the OAuth tokens held at rest. A binding to OpenSSL; no
+# cryptography is implemented in this project.
+cryptography>=43.0.0
+
+# Talking to GoTrue and to Google's token endpoints.
+httpx>=0.27.0
+
+# Configuration in a checkout.
+python-dotenv>=1.0.1
+
+# Tests.
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
