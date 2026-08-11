@@ -21,6 +21,8 @@ import os
 import queue
 import re
 import secrets
+import shutil
+import subprocess
 import sys
 import threading
 import webbrowser
@@ -62,6 +64,56 @@ def access_key() -> str:
 
 def chat_url(port: int = DEFAULT_PORT) -> str:
     return f"http://localhost:{port}/?k={access_key()}"
+
+
+# Chromium's --app= opens a plain window: no tab strip, no address bar, no
+# bookmarks. That is the whole difference between this reading as an app and
+# reading as a website someone left open in a tab. Chrome and Edge both take
+# the flag; Firefox and Safari have no equivalent and get an ordinary tab.
+_APP_MODE_BROWSERS = ("chrome", "google-chrome", "chromium", "msedge", "microsoft-edge")
+
+# Installed locations, for the common case where the browser is not on PATH.
+_WINDOWS_BROWSERS = (
+    r"%ProgramFiles%\Google\Chrome\Application\chrome.exe",
+    r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe",
+    r"%LocalAppData%\Google\Chrome\Application\chrome.exe",
+    r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe",
+    r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe",
+)
+
+
+def _app_mode_browser() -> str | None:
+    """Path to a browser that understands --app=, or None to use a tab."""
+    for name in _APP_MODE_BROWSERS:
+        found = shutil.which(name)
+        if found:
+            return found
+    if sys.platform == "win32":
+        for template in _WINDOWS_BROWSERS:
+            path = Path(os.path.expandvars(template))
+            # expandvars leaves unset variables as literal %NAME%, which cannot
+            # be a real path, so a stale entry just fails the exists() check.
+            if path.exists():
+                return str(path)
+    return None
+
+
+def open_window(url: str) -> None:
+    """Open the chat in an app window, falling back to a normal browser tab."""
+    browser = _app_mode_browser()
+    if browser is None:
+        webbrowser.open(url)
+        return
+    try:
+        # Detached: the browser outliving this process is the point, and a
+        # window the user closes must not take the agent down with it.
+        subprocess.Popen(  # noqa: S603
+            [browser, f"--app={url}"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        webbrowser.open(url)  # browser vanished between the check and the call
 
 
 class _Server(ThreadingHTTPServer):
@@ -887,7 +939,7 @@ def serve(
         console.print("\n[green]Already running.[/green] Opening the existing window.")
         console.print(f"  [bold]{url}[/bold]")
         if open_browser and not os.environ.get("AGENT_NO_BROWSER"):
-            webbrowser.open(url)
+            open_window(url)
         return
 
     holder: dict = {}
@@ -911,7 +963,7 @@ def serve(
         )
     console.print("\n[dim]Leave this window open while you use it. Close it to quit.[/dim]")
     if open_browser and not os.environ.get("AGENT_NO_BROWSER"):
-        threading.Timer(0.4, lambda: webbrowser.open(url)).start()
+        threading.Timer(0.4, lambda: open_window(url)).start()
 
     try:
         server.serve_forever()
