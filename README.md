@@ -55,8 +55,8 @@ website to sign up for. Closing the window stops the agent.
 ### From source instead
 
 ```powershell
-git clone https://github.com/alikhanmammadli/lumen-os.git
-cd lumen-os
+git clone https://github.com/Alikhan1980/Lumen-OS.git
+cd Lumen-OS
 .\run.ps1
 ```
 
