@@ -1,7 +1,7 @@
-# Google Workspace Agent
+# Lumen OS
 
 An AI agent that works inside your actual Google account, and out on the open
-web. Ask it something in plain English and it searches your mail, reads your
+web — running entirely on your own computer. Ask it something in plain English and it searches your mail, reads your
 Drive, checks your calendar, looks things up online, drives a real browser, and
 acts — 53 tools across Gmail, Drive, Calendar, Contacts, Tasks, its own
 reminders, web search, browser automation, and a local workspace folder, all
@@ -33,16 +33,40 @@ agent Two of the three need a reply.
 
 ## Quick start
 
+**Download [the latest release](../../releases/latest)**, double-click
+`WorkspaceAgent.exe`, and your browser opens to the chat window. Nothing to
+install — no Python, no Google Cloud account.
+
+Windows will show a blue "Windows protected your PC" box the first time, because
+the executable isn't code-signed. Click **More info → Run anyway**.
+
+> **The release build is capped at 100 users.** It carries a Google OAuth client
+> that Google has not verified, and unverified clients using Gmail and Drive
+> scopes are limited to 100 sign-ins — permanently, not per month. If sign-in
+> refuses you, that cap is why. Building from source with your own Google Cloud
+> project has no such limit.
+
+### It runs on your computer, not on a server
+
+The address bar says `localhost:8765`. That is your own machine talking to
+itself — the agent, your keys and your data never leave it, and there is no
+website to sign up for. Closing the window stops the agent.
+
+### From source instead
+
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m playwright install chromium   # for the browser tools
+git clone https://github.com/alikhanmammadli/lumen-os.git
+cd lumen-os
 .\run.ps1
 ```
 
-On first run it walks you through two things: connecting an AI provider with
-your own API key, and the Google sign-in. The Google Cloud side has to be set
-up once first — **[SETUP.md](SETUP.md)** covers it, about 10 minutes.
-`.\run.ps1 --check` tells you what's still missing.
+`run.ps1` creates the virtualenv, installs dependencies and downloads Chromium
+for the browser tools on first run. You'll need your own Google Cloud OAuth
+client — **[SETUP.md](SETUP.md)** covers it, about 10 minutes.
+
+On first run either path walks you through two things: connecting an AI provider
+with your own API key, and the Google sign-in. `.\run.ps1 --check` tells you
+what's still missing.
 
 You do **not** need a `.env` file. Copy `.env.example` only if you want to
 change agent behaviour (workspace folder, browser policy, web-search keys) —
