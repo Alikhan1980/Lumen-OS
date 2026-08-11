@@ -367,6 +367,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    # Someone who double-clicks the .exe gets the chat window. They have no way
+    # to pass --web, and the terminal REPL is not what a packaged app should
+    # open — it looks broken to anyone not expecting a console. A frozen build
+    # invoked with arguments is someone using it as a CLI, so leave that alone.
+    if is_frozen() and not sys.argv[1:]:
+        args.web = True
+
     # Before anything heavier: this path runs once a minute, all day.
     if args.notify:
         return _notify_sweep()
