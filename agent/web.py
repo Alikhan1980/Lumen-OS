@@ -16,6 +16,7 @@ that check is the agent's, not the page's.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import queue
@@ -397,6 +398,33 @@ def _handler_class(
                 self.headers.get("X-Agent-Key", ""), key
             ) or secrets.compare_digest(self._cookie_key(), key)
 
+        def _needs_account(self) -> bool:
+            """True when accounts are on and nobody is signed in.
+
+            The gate is the server's, not the page's. Drawing a sign-in screen
+            only hides the app from someone using the page as intended -- the
+            access key is in the URL, so anything that skips the screen and
+            calls the API directly would otherwise get a working agent. With
+            accounts off this is always False and nothing changes.
+            """
+            if auth_session is None:
+                return False
+            if not auth_session.is_signed_in():
+                # A returning user's refresh token is in the credential store
+                # and this may be the first call that asks. restore() tries
+                # once per process and is cheap afterwards.
+                with contextlib.suppress(Exception):
+                    auth_session.restore()
+            return not auth_session.is_signed_in()
+
+        def _refuse_without_account(self) -> None:
+            self._send(
+                401,
+                b'{"error":{"code":"account_required",'
+                b'"message":"Sign in to use the agent."}}',
+                "application/json",
+            )
+
         def _send(self, code: int, body: bytes, content_type: str) -> None:
             self.send_response(code)
             self.send_header("Content-Type", content_type)
@@ -668,6 +696,13 @@ def _handler_class(
                 self._send(status, auth_routes.json_bytes(payload), "application/json")
                 return
 
+            # Past this point every API path is the agent itself. The page at
+            # "/" is deliberately not gated: it has to load to draw the sign-in
+            # screen in the first place.
+            if path.startswith("/api/") and self._needs_account():
+                self._refuse_without_account()
+                return
+
             if path == "/api/account":
                 if not self._authorized():
                     self._send(403, b'{"error":"forbidden"}', "application/json")
@@ -767,6 +802,10 @@ def _handler_class(
                     auth_session, path, "POST", self._json_body()
                 )
                 self._send(status, auth_routes.json_bytes(payload), "application/json")
+                return
+
+            if path.startswith("/api/") and self._needs_account():
+                self._refuse_without_account()
                 return
 
             if self.path == "/api/approve":
