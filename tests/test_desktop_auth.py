@@ -485,8 +485,15 @@ def test_the_shared_session_is_one_per_process(monkeypatch):
 
 
 def test_the_shared_session_defaults_to_the_local_api(monkeypatch):
+    """With no backend configured at all, `server/` on this machine is assumed.
+
+    A build with a Supabase project in it takes the other branch, which
+    test_supabase_auth.py covers; pinning it off here keeps this about the
+    fallback.
+    """
     session_module.reset_shared()
     monkeypatch.delenv("LUMEN_API_URL", raising=False)
+    monkeypatch.setattr("agent.config.supabase_config", lambda: None)
     try:
         assert session_module.shared().api_url == "http://127.0.0.1:8000"
     finally:
@@ -518,13 +525,16 @@ def _render() -> str:
     return _page(_BareAgent(), "someone@example.com")
 
 
-def test_with_no_accounts_server_there_is_no_sign_in_screen(monkeypatch):
-    """The desktop app on its own, which is how it ships.
+def test_with_no_accounts_backend_there_is_no_sign_in_screen(monkeypatch):
+    """The desktop app on its own, with nothing to sign in to.
 
-    Without this the .exe opens on a sign-in card pointed at a server on the
-    user's own machine that nobody has started, and there is no way past it.
+    Without this such a build opens on a sign-in card pointed at a server on
+    the user's own machine that nobody has started, and there is no way past
+    it. Note this is no longer how the app ships: builds carry a Supabase
+    project and are gated -- see test_supabase_auth.py.
     """
     monkeypatch.delenv("LUMEN_API_URL", raising=False)
+    monkeypatch.setattr("agent.config.supabase_config", lambda: None)
     page = _render()
 
     assert 'id="auth"' not in page

@@ -473,20 +473,29 @@ DEFAULT_API_URL = "http://127.0.0.1:8000"
 
 
 def accounts_enabled() -> bool:
-    """Whether this app talks to an accounts server at all.
+    """Whether this app requires an account at all.
 
-    Set `LUMEN_API_URL` and the app signs in to that deployment. Leave it unset
-    and there are no accounts: the single-user desktop app it was before there
-    was a server, with reminders, provider keys and Google connections all local
-    to the machine and nothing to sign up for.
+    Two backends can provide one, and either is enough:
 
-    The address is the switch, rather than a separate flag beside it, because
-    there is nothing to sign in *to* without one -- and a flag that can disagree
-    with the address is a way to be pointed at a server you are not using. The
-    consequence to keep in mind: a developer running the server locally must set
-    the variable, which is what SETUP-AUTH.md tells them to do.
+    * **Supabase**, bundled into the build -- the one that works on a machine
+      someone downloaded the app onto, because the project is already hosted.
+    * **`LUMEN_API_URL`**, the FastAPI app in `server/` -- for developing
+      against a local or self-hosted deployment. Takes precedence when set.
+
+    With neither, there are no accounts: the single-user desktop app it was
+    before there was a server, with reminders, provider keys and Google
+    connections all local to the machine and nothing to sign up for.
+
+    The address is the switch for the server backend, rather than a separate
+    flag beside it, because there is nothing to sign in *to* without one -- and
+    a flag that can disagree with the address is a way to be pointed at a server
+    you are not using.
     """
-    return bool((os.getenv("LUMEN_API_URL") or "").strip())
+    if (os.getenv("LUMEN_API_URL") or "").strip():
+        return True
+    from ..config import supabase_config
+
+    return supabase_config() is not None
 
 
 _shared: Session | None = None
@@ -498,11 +507,27 @@ def shared(api_url: str | None = None) -> Session:
 
     One per process because a desktop app has one user at the keyboard. The
     server does not use this at all -- it derives identity per request.
+
+    An explicit address, or LUMEN_API_URL, means someone is pointing this at a
+    deployment of `server/` and gets the session that speaks to it. Otherwise
+    the bundled Supabase project answers, which is the path every downloaded
+    copy takes.
     """
     global _shared  # noqa: PLW0603 -- one desktop session per process
     with _shared_lock:
-        if _shared is None:
-            _shared = Session(api_url or os.getenv("LUMEN_API_URL") or DEFAULT_API_URL)
+        if _shared is not None:
+            return _shared
+
+        explicit = api_url or (os.getenv("LUMEN_API_URL") or "").strip()
+        if explicit:
+            _shared = Session(explicit)
+            return _shared
+
+        from ..config import supabase_config
+        from .supabase import SupabaseSession
+
+        config = supabase_config()
+        _shared = SupabaseSession(*config) if config else Session(DEFAULT_API_URL)
         return _shared
 
 

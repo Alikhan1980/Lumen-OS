@@ -42,6 +42,36 @@ if ($bundleSecret) {
     Write-Host ""
 }
 
+# The accounts gate needs the Supabase project baked in, because a downloaded
+# copy has no .env to read it from and would otherwise run ungated. Only the
+# anon key goes in -- it is the public half of the project and is what Supabase
+# intends clients to ship. SUPABASE_SERVICE_ROLE_KEY is never read here.
+$supabaseJson = Join-Path $PSScriptRoot "supabase.json"
+$bundleSupabase = $false
+$envFile = Join-Path $PSScriptRoot ".env"
+if (Test-Path $envFile) {
+    $envLines = Get-Content $envFile
+    $sbUrl = ($envLines | Where-Object { $_ -match '^\s*SUPABASE_URL\s*=' } |
+        Select-Object -First 1) -replace '^\s*SUPABASE_URL\s*=\s*', ''
+    $sbKey = ($envLines | Where-Object { $_ -match '^\s*SUPABASE_ANON_KEY\s*=' } |
+        Select-Object -First 1) -replace '^\s*SUPABASE_ANON_KEY\s*=\s*', ''
+    $sbUrl = $sbUrl.Trim().Trim('"').Trim("'")
+    $sbKey = $sbKey.Trim().Trim('"').Trim("'")
+    if ($sbUrl -and $sbKey) {
+        @{ url = $sbUrl; anon_key = $sbKey } | ConvertTo-Json |
+            Out-File -FilePath $supabaseJson -Encoding utf8
+        $bundleSupabase = $true
+        Write-Host "Bundling Supabase project: $sbUrl" -ForegroundColor DarkGray
+    }
+}
+if (-not $bundleSupabase) {
+    Write-Host ""
+    Write-Host "WARNING: no SUPABASE_URL/SUPABASE_ANON_KEY found in .env." -ForegroundColor Yellow
+    Write-Host "The build will run WITHOUT the account gate - anyone who downloads it" -ForegroundColor Yellow
+    Write-Host "can use the agent without signing up." -ForegroundColor Yellow
+    Write-Host ""
+}
+
 # A .env in the build folder is a developer's own file. It is never bundled:
 # the packaged app reads keys from the OS credential store, and a stray .env
 # riding along inside the .exe is exactly how a developer's key would leak to
@@ -76,6 +106,9 @@ $arguments = @(
 )
 if ($bundleSecret) {
     $arguments += @("--add-data", "$($secret.Name);.")
+}
+if ($bundleSupabase) {
+    $arguments += @("--add-data", "supabase.json;.")
 }
 $arguments += "launcher.py"
 

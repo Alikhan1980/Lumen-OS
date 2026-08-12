@@ -10,6 +10,11 @@ credentials/
 client_secret.json
 client_secret*.json
 
+# Written by build.ps1 from .env and bundled into the .exe. Only the Supabase
+# anon key, which is public by design -- but it is generated output, not
+# source, and it is per-deployment.
+supabase.json
+
 # Provider choices. No keys in it, but it is per-user state, not source.
 providers.json
 

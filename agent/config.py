@@ -20,6 +20,7 @@ AI API key, and this app ships with none of its own.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from dataclasses import dataclass
@@ -77,6 +78,43 @@ def client_secret_path() -> Path | None:
     build can be pointed at someone else's Google Cloud project.
     """
     return _find_client_secret(CREDENTIALS_DIR) or _find_client_secret(bundled_dir())
+
+
+def supabase_config() -> tuple[str, str] | None:
+    """(project URL, anon key) for the accounts backend, or None if unset.
+
+    Bundled into a build the same way the OAuth client is, because accounts
+    have to work on a machine that has no .env -- which is every machine the
+    app is downloaded onto. Environment variables win so a checkout can point
+    at a different project without rebuilding.
+
+    The anon key belongs in the build. It is the public half of a Supabase
+    project, designed to ship inside clients, and row-level security is what
+    actually restricts it. The service-role key is the dangerous one and is
+    never read here.
+    """
+    url = (os.getenv("SUPABASE_URL") or "").strip()
+    key = (os.getenv("SUPABASE_ANON_KEY") or "").strip()
+    if url and key:
+        return url.rstrip("/"), key
+
+    for directory in (CREDENTIALS_DIR, bundled_dir()):
+        path = directory / "supabase.json"
+        if not path.exists():
+            continue
+        try:
+            # utf-8-sig, not utf-8: PowerShell 5.1's `Out-File -Encoding utf8`
+            # writes a BOM, and build.ps1 generates this file. Plain utf-8
+            # raises on the BOM, which read as "no accounts configured" and
+            # shipped a build with the gate silently off.
+            data = json.loads(path.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            continue
+        url = str(data.get("url") or "").strip().rstrip("/")
+        key = str(data.get("anon_key") or "").strip()
+        if url and key:
+            return url, key
+    return None
 
 
 # Web search backends, best first. Whichever one has its key set is used;
