@@ -34,23 +34,31 @@ agent Two of the three need a reply.
 ## Quick start
 
 **Download [the latest release](../../releases/latest)**, double-click
-`WorkspaceAgent.exe`, and your browser opens to the chat window. Nothing to
-install — no Python, no Google Cloud account.
+`WorkspaceAgent.exe`, and it opens in its own window. Nothing to install — no
+Python, no Google Cloud account.
 
 Windows will show a blue "Windows protected your PC" box the first time, because
 the executable isn't code-signed. Click **More info → Run anyway**.
 
-> **The release build is capped at 100 users.** It carries a Google OAuth client
-> that Google has not verified, and unverified clients using Gmail and Drive
-> scopes are limited to 100 sign-ins — permanently, not per month. If sign-in
-> refuses you, that cap is why. Building from source with your own Google Cloud
-> project has no such limit.
+First screen is **create an account or sign in**. The agent does nothing until
+you have one.
+
+> **The release build is capped at 100 Google sign-ins.** It carries a Google
+> OAuth client that Google has not verified, and unverified clients using Gmail
+> and Drive scopes are limited to 100 sign-ins — permanently, not per month.
+> That cap is separate from your Lumen account and applies only to connecting
+> Google. Building from source with your own Google Cloud project has no such
+> limit.
 
 ### It runs on your computer, not on a server
 
-The address bar says `localhost:8765`. That is your own machine talking to
-itself — the agent, your keys and your data never leave it, and there is no
-website to sign up for. Closing the window stops the agent.
+The agent, your provider key, your mail and your files all stay on your own
+machine — it serves itself on `localhost` and there is nothing hosted to send
+your data to. The single exception is the account sign-in, which checks with
+Supabase. Closing the window stops the agent.
+
+Building from source without a Supabase project configured gives you the
+ungated single-user app instead, with no account at all.
 
 ### From source instead
 
